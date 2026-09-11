@@ -6,6 +6,7 @@
 databases:
   - name: cyber-risk-db
     plan: free
+    region: oregon
     databaseName: cyber_risk_db
     user: crq_admin
 
@@ -14,12 +15,13 @@ services:
     name: cyber-risk-api
     runtime: python
     plan: free
+    region: oregon
     buildCommand: pip install -r requirements.txt
     startCommand: python db_init.py --force && uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
         fromDatabase:
           name: cyber-risk-db
-          property: externalConnectionString
+          property: connectionString
       - key: PYTHON_VERSION
         value: "3.11.9"
