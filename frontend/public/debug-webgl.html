@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Three.js Debug — WebGL Test</title>
+<style>
+  body { margin: 0; background: #030508; color: #fff; font-family: monospace; }
+  #info { position: fixed; top: 10px; left: 10px; z-index: 999; font-size: 12px; background: rgba(0,0,0,0.8); padding: 12px; border: 1px solid #333; max-width: 400px; }
+  #info div { margin: 2px 0; }
+  .ok { color: #4ADE9A; }
+  .fail { color: #E05454; }
+  .warn { color: #FFB347; }
+</style>
+</head>
+<body>
+<div id="info">Loading diagnostics...</div>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+
+const info = document.getElementById('info');
+const lines = [];
+function log(msg, cls = '') {
+  lines.push(`<div class="${cls}">${msg}</div>`);
+  info.innerHTML = lines.join('');
+}
+
+// 1. Create renderer
+try {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setClearColor(new THREE.Color('#0A1020'), 1);
+  document.body.appendChild(renderer.domElement);
+  renderer.domElement.style.position = 'fixed';
+  renderer.domElement.style.inset = '0';
+  renderer.domElement.style.zIndex = '1';
+  
+  log('✓ WebGL renderer created', 'ok');
+  log(`  Canvas size: ${renderer.domElement.width}x${renderer.domElement.height}`, 'ok');
+  
+  const gl = renderer.getContext();
+  log(`  WebGL version: ${gl.getParameter(gl.VERSION)}`, 'ok');
+  
+  // 2. Create scene
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color('#0A1020');
+  scene.fog = new THREE.FogExp2('#0A1020', 0.018);
+  log('✓ Scene created with background #0A1020', 'ok');
+  
+  // 3. Create camera
+  const camera = new THREE.PerspectiveCamera(52, window.innerWidth / window.innerHeight, 0.1, 100);
+  camera.position.set(0, 1, 16);
+  camera.lookAt(0, 0, 0);
+  log(`✓ Camera at [0, 1, 16], fov=52`, 'ok');
+  
+  // 4. Add lights
+  const ambient = new THREE.AmbientLight('#8899BB', 0.3);
+  scene.add(ambient);
+  const dir = new THREE.DirectionalLight('#C9A96E', 0.5);
+  dir.position.set(8, 6, 4);
+  scene.add(dir);
+  const point1 = new THREE.PointLight('#5B7FA8', 0.6, 30);
+  point1.position.set(-5, 3, 2);
+  scene.add(point1);
+  const point2 = new THREE.PointLight('#E05454', 0.3, 20);
+  point2.position.set(3, -2, -5);
+  scene.add(point2);
+  log('✓ Lights added (ambient + directional + 2 point)', 'ok');
+  
+  // 5. Test sphere — unmistakable
+  const testGeo = new THREE.SphereGeometry(1.5, 32, 24);
+  const testMat = new THREE.MeshStandardMaterial({
+    color: '#E05454',
+    emissive: '#FF6B6B',
+    emissiveIntensity: 0.8,
+    roughness: 0.4,
+    metalness: 0.2,
+  });
+  const testSphere = new THREE.Mesh(testGeo, testMat);
+  testSphere.position.set(0, 0, 0);
+  scene.add(testSphere);
+  log('✓ Test sphere added (radius 1.5, red, emissive)', 'ok');
+  
+  // 6. Grid
+  const grid = new THREE.GridHelper(30, 40, '#5B7FA8', '#364560');
+  grid.position.y = -3;
+  grid.material.opacity = 0.08;
+  grid.material.transparent = true;
+  scene.add(grid);
+  log('✓ Grid added', 'ok');
+  
+  // 7. Depth rings
+  for (let i = 0; i < 3; i++) {
+    const ringGeo = new THREE.RingGeometry(4 + i * 4, 4.05 + i * 4, 128);
+    const ringMat = new THREE.MeshBasicMaterial({
+      color: i === 0 ? '#C9A96E' : '#5B7FA8',
+      transparent: true,
+      opacity: 0.06 - i * 0.015,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.rotation.x = Math.PI / 2 + i * 0.1;
+    ring.position.set(1, -0.5, -4);
+    scene.add(ring);
+  }
+  log('✓ Depth rings added', 'ok');
+  
+  // 8. Sample node cluster
+  const palette = [
+    { color: '#E05454', glow: '#FF6B6B' },
+    { color: '#E89A1A', glow: '#FFB347' },
+    { color: '#25B87A', glow: '#4ADE9A' },
+  ];
+  for (let i = 0; i < 20; i++) {
+    const angle = (i / 20) * Math.PI * 2;
+    const r = 3 + Math.sin(i * 7.1) * 2;
+    const y = Math.sin(i * 3.3) * 1.5;
+    const p = palette[i % 3];
+    const size = 0.08 + Math.abs(Math.sin(i * 5.7)) * 0.12;
+    
+    const geo = new THREE.SphereGeometry(size, 10, 8);
+    const mat = new THREE.MeshStandardMaterial({
+      color: p.color,
+      emissive: p.glow,
+      emissiveIntensity: 0.5,
+      roughness: 0.5,
+    });
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(Math.cos(angle) * r, y, Math.sin(angle) * r);
+    scene.add(mesh);
+  }
+  log('✓ 20 sample risk nodes added', 'ok');
+  
+  // 9. Ambient particles  
+  const particleCount = 150;
+  const particlePos = new Float32Array(particleCount * 3);
+  const particleCol = new Float32Array(particleCount * 3);
+  for (let i = 0; i < particleCount; i++) {
+    particlePos[i*3] = (Math.sin(i * 7.1 + 1) * 10000 % 1 - 0.5) * 30;
+    particlePos[i*3+1] = (Math.sin(i * 13.3 + 2) * 10000 % 1 - 0.5) * 20;
+    particlePos[i*3+2] = (Math.sin(i * 17.7 + 3) * 10000 % 1 - 0.5) * 16 - 4;
+    const b = 0.3 + (Math.sin(i * 23.1) * 10000 % 1) * 0.2;
+    particleCol[i*3] = b * 0.7;
+    particleCol[i*3+1] = b * 0.85;
+    particleCol[i*3+2] = b * 1.0;
+  }
+  const pGeo = new THREE.BufferGeometry();
+  pGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+  pGeo.setAttribute('color', new THREE.BufferAttribute(particleCol, 3));
+  const pMat = new THREE.PointsMaterial({ vertexColors: true, transparent: true, opacity: 0.5, size: 0.12, sizeAttenuation: true });
+  const particles = new THREE.Points(pGeo, pMat);
+  scene.add(particles);
+  log('✓ 150 ambient particles added', 'ok');
+  
+  // 10. Object count
+  let meshCount = 0;
+  scene.traverse(obj => { if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.LineSegments) meshCount++; });
+  log(`✓ Total renderable objects: ${meshCount}`, 'ok');
+  
+  // 11. Render & animate
+  let frame = 0;
+  function animate() {
+    requestAnimationFrame(animate);
+    frame++;
+    testSphere.rotation.y = frame * 0.005;
+    scene.children.forEach(c => {
+      if (c !== testSphere && c instanceof THREE.Mesh && c.geometry.type === 'SphereGeometry') {
+        c.rotation.y = frame * 0.003;
+      }
+    });
+    particles.rotation.y = frame * 0.0003;
+    renderer.render(scene, camera);
+  }
+  animate();
+  log('✓ Animation loop started', 'ok');
+  log('', '');
+  log('If you can see a RED SPHERE and colored nodes,', 'warn');
+  log('WebGL is working. The problem is in the React app CSS/layers.', 'warn');
+  
+  // Resize
+  window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  });
+  
+} catch(e) {
+  log('✗ WebGL FAILED: ' + e.message, 'fail');
+  console.error(e);
+}
+</script>
+</body>
+</html>
