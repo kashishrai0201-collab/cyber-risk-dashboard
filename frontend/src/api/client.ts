@@ -15,14 +15,15 @@ import type {
 } from './types'
 
 const BACKEND_URL_KEY = 'crq_backend_url'
-const DEFAULT_BACKEND = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
+const DEFAULT_BACKEND = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000').replace(/\/+$/, '')
 
 export function getBackendUrl(): string {
-  return localStorage.getItem(BACKEND_URL_KEY) || DEFAULT_BACKEND
+  const url = localStorage.getItem(BACKEND_URL_KEY) || DEFAULT_BACKEND
+  return url.replace(/\/+$/, '')
 }
 
 export function setBackendUrl(url: string): void {
-  localStorage.setItem(BACKEND_URL_KEY, url.replace(/\/+$/, ''))
+  localStorage.setItem(BACKEND_URL_KEY, url.trim().replace(/\/+$/, ''))
 }
 
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
