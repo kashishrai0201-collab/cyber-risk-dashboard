@@ -15,9 +15,10 @@ import type {
 } from './types'
 
 const BACKEND_URL_KEY = 'crq_backend_url'
+const DEFAULT_BACKEND = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'
 
 export function getBackendUrl(): string {
-  return localStorage.getItem(BACKEND_URL_KEY) || 'http://127.0.0.1:8000'
+  return localStorage.getItem(BACKEND_URL_KEY) || DEFAULT_BACKEND
 }
 
 export function setBackendUrl(url: string): void {

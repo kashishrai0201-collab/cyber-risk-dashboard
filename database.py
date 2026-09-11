@@ -23,11 +23,17 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from urllib.parse import quote_plus
-# Dynamic database URL with safe production PostgreSQL default
-raw_password = "0208"  # e.g. "password@1308" or whatever it is
-encoded_password = quote_plus(raw_password)
 
-DATABASE_URL = f"postgresql+psycopg2://postgres:{encoded_password}@localhost:5432/cyber_risk_db"
+# Read DATABASE_URL from environment (Render injects this automatically).
+# Fall back to local PostgreSQL for development.
+_raw_password = quote_plus("0208")
+_LOCAL_DB = f"postgresql+psycopg2://postgres:{_raw_password}@localhost:5432/cyber_risk_db"
+DATABASE_URL: str = os.environ.get("DATABASE_URL", _LOCAL_DB)
+
+# Render provides URLs starting with "postgres://" but SQLAlchemy 2.x needs "postgresql://"
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+psycopg2://", 1)
+
 # Engine configuration with production connection pooling parameters
 engine_kwargs: dict[str, Any] = {
     "echo": False,

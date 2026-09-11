@@ -1,0 +1,25 @@
+# ============================================================
+# Render Infrastructure-as-Code Blueprint
+# https://render.com/docs/blueprint-spec
+# ============================================================
+
+databases:
+  - name: cyber-risk-db
+    plan: free
+    databaseName: cyber_risk_db
+    user: crq_admin
+
+services:
+  - type: web
+    name: cyber-risk-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python db_init.py --force && uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: cyber-risk-db
+          property: connectionURI
+      - key: PYTHON_VERSION
+        value: "3.11.9"
