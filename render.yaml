@@ -20,6 +20,6 @@ services:
       - key: DATABASE_URL
         fromDatabase:
           name: cyber-risk-db
-          property: connectionURI
+          property: connectionString
       - key: PYTHON_VERSION
         value: "3.11.9"
